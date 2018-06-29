@@ -33,6 +33,7 @@ namespace OCA\Files_Sharing\Tests;
 
 use OC\Files\Cache\Scanner;
 use OCA\Files_Sharing\Controller\ShareAPIController;
+use OCP\App\IAppManager;
 use OCP\AppFramework\OCS\OCSBadRequestException;
 use OCP\AppFramework\OCS\OCSException;
 use OCP\AppFramework\OCS\OCSForbiddenException;
@@ -40,6 +41,7 @@ use OCP\AppFramework\OCS\OCSNotFoundException;
 use OCP\IConfig;
 use OCP\IL10N;
 use OCP\IRequest;
+use OCP\IServerContainer;
 
 /**
  * Class ApiTest
@@ -107,6 +109,8 @@ class ApiTest extends TestCase {
 				return vsprintf($text, $parameters);
 			}));
 		$config = $this->createMock(IConfig::class);
+		$appManager = $this->createMock(IAppManager::class);
+		$serverContainer = $this->createMock(IServerContainer::class);
 
 		return new ShareAPIController(
 			self::APP_NAME,
@@ -118,7 +122,9 @@ class ApiTest extends TestCase {
 			\OC::$server->getURLGenerator(),
 			$userId,
 			$l,
-			$config
+			$config,
+			$appManager,
+			$serverContainer
 		);
 	}
 
