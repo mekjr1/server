@@ -338,7 +338,8 @@ class ShareByMailProvider implements IShareProvider {
 			$share->getShareOwner(),
 			$share->getPermissions(),
 			$share->getToken(),
-			$share->getPassword()
+			$share->getPassword(),
+			$share->getSendPasswordByTalk()
 		);
 
 		try {
@@ -605,9 +606,11 @@ class ShareByMailProvider implements IShareProvider {
 	 * @param string $uidOwner
 	 * @param int $permissions
 	 * @param string $token
+	 * @param string $password
+	 * @param bool $sendPasswordByTalk
 	 * @return int
 	 */
-	protected function addShareToDB($itemSource, $itemType, $shareWith, $sharedBy, $uidOwner, $permissions, $token, $password) {
+	protected function addShareToDB($itemSource, $itemType, $shareWith, $sharedBy, $uidOwner, $permissions, $token, $password, $sendPasswordByTalk) {
 		$qb = $this->dbConnection->getQueryBuilder();
 		$qb->insert('share')
 			->setValue('share_type', $qb->createNamedParameter(\OCP\Share::SHARE_TYPE_EMAIL))
@@ -620,6 +623,7 @@ class ShareByMailProvider implements IShareProvider {
 			->setValue('permissions', $qb->createNamedParameter($permissions))
 			->setValue('token', $qb->createNamedParameter($token))
 			->setValue('password', $qb->createNamedParameter($password))
+			->setValue('password_by_talk', $qb->createNamedParameter($sendPasswordByTalk, IQueryBuilder::PARAM_INT))
 			->setValue('stime', $qb->createNamedParameter(time()));
 
 		/*
@@ -661,6 +665,7 @@ class ShareByMailProvider implements IShareProvider {
 			->set('uid_owner', $qb->createNamedParameter($share->getShareOwner()))
 			->set('uid_initiator', $qb->createNamedParameter($share->getSharedBy()))
 			->set('password', $qb->createNamedParameter($share->getPassword()))
+			->set('password_by_talk', $qb->createNamedParameter($share->getSendPasswordByTalk(), IQueryBuilder::PARAM_INT))
 			->set('expiration', $qb->createNamedParameter($share->getExpirationDate(), IQueryBuilder::PARAM_DATE))
 			->execute();
 
@@ -911,6 +916,7 @@ class ShareByMailProvider implements IShareProvider {
 		$share->setShareTime($shareTime);
 		$share->setSharedWith($data['share_with']);
 		$share->setPassword($data['password']);
+		$share->setSendPasswordByTalk($data['password_by_talk']);
 
 		if ($data['uid_initiator'] !== null) {
 			$share->setShareOwner($data['uid_owner']);
