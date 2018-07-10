@@ -45,6 +45,7 @@ use OCP\IGroupManager;
 use OCP\IL10N;
 use OCP\IUserManager;
 use OCP\IRequest;
+use OCP\IServerContainer;
 use OCP\IURLGenerator;
 use OCP\Files\IRootFolder;
 use OCP\Lock\LockedException;
@@ -81,6 +82,8 @@ class ShareAPIController extends OCSController {
 	private $lockedNode;
 	/** @var IConfig */
 	private $config;
+	/** @var IServerContainer */
+	private $serverContainer;
 
 	/**
 	 * Share20OCS constructor.
@@ -106,7 +109,8 @@ class ShareAPIController extends OCSController {
 		IURLGenerator $urlGenerator,
 		string $userId,
 		IL10N $l10n,
-		IConfig $config
+		IConfig $config,
+		IServerContainer $serverContainer
 	) {
 		parent::__construct($appName, $request);
 
@@ -119,6 +123,7 @@ class ShareAPIController extends OCSController {
 		$this->currentUser = $userId;
 		$this->l = $l10n;
 		$this->config = $config;
+		$this->serverContainer = $serverContainer;
 	}
 
 	/**
@@ -205,6 +210,7 @@ class ShareAPIController extends OCSController {
 		} else if ($share->getShareType() === Share::SHARE_TYPE_EMAIL) {
 			$result['share_with'] = $share->getSharedWith();
 			$result['password'] = $share->getPassword();
+			$result['send_password_by_talk'] = $share->getSendPasswordByTalk();
 			$result['share_with_displayname'] = $this->getDisplayNameFromAddressBook($share->getSharedWith(), 'EMAIL');
 			$result['token'] = $share->getToken();
 		} else if ($share->getShareType() === Share::SHARE_TYPE_CIRCLE) {
@@ -327,6 +333,7 @@ class ShareAPIController extends OCSController {
 	 * @param string $shareWith
 	 * @param string $publicUpload
 	 * @param string $password
+	 * @param bool $sendPasswordByTalk
 	 * @param string $expireDate
 	 *
 	 * @return DataResponse
@@ -344,6 +351,7 @@ class ShareAPIController extends OCSController {
 		string $shareWith = null,
 		string $publicUpload = 'false',
 		string $password = '',
+		string $sendPasswordByTalk = null,
 		string $expireDate = ''
 	): DataResponse {
 		$share = $this->shareManager->newShare();
@@ -484,6 +492,14 @@ class ShareAPIController extends OCSController {
 				$share->setPermissions($permissions);
 			}
 			$share->setSharedWith($shareWith);
+
+			if ($sendPasswordByTalk === 'true') {
+				if (!$this->serverContainer->getAppManager()->isEnabledForUser('spreed')) {
+					throw new OCSForbiddenException($this->l->t('Sharing %s sending the password by Nextcloud Talk failed because Nextcloud Talk is not enabled', [$path->getPath()]));
+				}
+
+				$share->setSendPasswordByTalk(true);
+			}
 		} else if ($shareType === Share::SHARE_TYPE_CIRCLE) {
 			if (!\OC::$server->getAppManager()->isEnabledForUser('circles') || !class_exists('\OCA\Circles\ShareByCircleProvider')) {
 				throw new OCSNotFoundException($this->l->t('You cannot share to a Circle if the app is not enabled'));
@@ -696,6 +712,7 @@ class ShareAPIController extends OCSController {
 	 * @param string $id
 	 * @param int $permissions
 	 * @param string $password
+	 * @param string $sendPasswordByTalk
 	 * @param string $publicUpload
 	 * @param string $expireDate
 	 * @return DataResponse
@@ -707,6 +724,7 @@ class ShareAPIController extends OCSController {
 		string $id,
 		int $permissions = null,
 		string $password = null,
+		string $sendPasswordByTalk = null,
 		string $publicUpload = null,
 		string $expireDate = null
 	): DataResponse {
@@ -722,7 +740,7 @@ class ShareAPIController extends OCSController {
 			throw new OCSNotFoundException($this->l->t('Wrong share ID, share doesn\'t exist'));
 		}
 
-		if ($permissions === null && $password === null && $publicUpload === null && $expireDate === null) {
+		if ($permissions === null && $password === null && $sendPasswordByTalk === null && $publicUpload === null && $expireDate === null) {
 			throw new OCSBadRequestException($this->l->t('Wrong or no update parameter given'));
 		}
 
@@ -806,6 +824,16 @@ class ShareAPIController extends OCSController {
 					$share->setPassword(null);
 				} else if ($password !== null) {
 					$share->setPassword($password);
+				}
+
+				if ($sendPasswordByTalk === 'true') {
+					if (!$this->serverContainer->getAppManager()->isEnabledForUser('spreed')) {
+						throw new OCSForbiddenException($this->l->t('Sharing sending the password by Nextcloud Talk failed because Nextcloud Talk is not enabled'));
+					}
+
+					$share->setSendPasswordByTalk(true);
+				} else {
+					$share->setSendPasswordByTalk(false);
 				}
 			}
 
