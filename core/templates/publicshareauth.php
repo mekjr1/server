@@ -25,3 +25,7 @@
 		</p>
 	</fieldset>
 </form>
+
+<?php if ($_['sendPasswordByTalk']): ?>
+	<?php echo (new \OCP\Template('spreed', 'publicshareauth'))->fetchPage($_['sendPasswordByTalk']); ?>
+<?php endif; ?>

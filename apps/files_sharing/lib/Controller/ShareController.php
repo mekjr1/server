@@ -143,6 +143,48 @@ class ShareController extends AuthPublicShareController {
 		$this->shareManager = $shareManager;
 	}
 
+	/**
+	 * @PublicPage
+	 * @NoCSRFRequired
+	 *
+	 * Show the authentication page
+	 * The form has to submit to the authenticate method route
+	 */
+	public function showAuthenticate(): TemplateResponse {
+		return new TemplateResponse('core', 'publicshareauth', ['sendPasswordByTalk' => $this->getSendPasswordByTalk($this->share)], 'guest');
+	}
+
+	/**
+	 * The template to show when authentication failed
+	 */
+	protected function showAuthFailed(): TemplateResponse {
+		return new TemplateResponse('core', 'publicshareauth', ['sendPasswordByTalk' => $this->getSendPasswordByTalk($this->share), 'wrongpw' => true], 'guest');
+	}
+
+	/**
+	 * Returns if "send password by Talk" is enabled for the share and, if it
+	 * is, the parameters for the template.
+	 *
+	 * @param \OCP\Share\IShare $share
+	 * @return array|bool
+	 */
+	private function getSendPasswordByTalk(\OCP\Share\IShare $share) {
+		if (!$share->getSendPasswordByTalk()) {
+			return false;
+		}
+
+		if (!\OC::$server->getAppManager()->isEnabledForUser('spreed') ||
+				!\OC::$server->getAppManager()->isEnabledForUser('spreed', $share->getSharedBy())) {
+			return false;
+		}
+
+		return [
+			'sharedBy' => $share->getSharedBy(),
+			'sharedWith' => $share->getSharedWith(),
+			'token' => $share->getToken()
+		];
+	}
+
 	protected function verifyPassword(string $password): bool {
 		return $this->shareManager->checkPassword($this->share, $password);
 	}
